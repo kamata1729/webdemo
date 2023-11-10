@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Text-to-Texture Demo</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+<body>
+    <script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three/build/three.module.js"
+				}
+			}
+    </script>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+        import { GLTFLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+        import { OBJLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/OBJLoader.js';
+        import { RGBELoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/RGBELoader.js';
+        import { MTLLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/MTLLoader.js';
+
+        let camera, scene, renderer, controls;
+        let currentModelIndex = 0;
+        const models = [
+        { path: 'models/louis_vuitton/', obj: '9.obj', mtl: '9.mtl' },
+        { path: 'models/tanjiro/', obj: 'tanjiro.obj', mtl: 'tanjiro.mtl' },
+        { path: 'models/aibo/', obj: 'aibo.obj', mtl: 'aibo.mtl' }
+        ];
+
+        init();
+        loadModel(currentModelIndex);
+
+        function init() {
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 20);
+            camera.position.set(-1.8, 0.6, 2.7);
+
+            scene = new THREE.Scene();
+
+            new RGBELoader()
+                .setPath('textures/equirectangular/')
+                .load('royal_esplanade_1k.hdr', function (texture) {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+
+                    scene.background = texture;
+                    scene.environment = texture;
+
+                    render();
+
+                    // 環境光源を作成
+                    const ambientLight = new THREE.AmbientLight(0xffffff);
+                    ambientLight.intensity = 3;
+                    scene.add(ambientLight);
+
+                    // 平行光源を作成
+                    const directionalLight = new THREE.DirectionalLight(0xffffff);
+                    directionalLight.intensity = 3;
+                    directionalLight.position.set(1, 3, 1);
+                    scene.add(directionalLight);
+
+                    const mtlLoader = new MTLLoader().setPath('models/louis_vuitton/');
+                    mtlLoader.load('9.mtl', function (materials) {
+                        materials.preload();
+
+                        const objLoader = new OBJLoader().setPath('models/louis_vuitton/');
+                        objLoader.setMaterials(materials);
+                        objLoader.load(
+                            '9.obj',
+                            function (obj) {
+                                // オブジェクト内の全てのメッシュに対してマテリアルを更新
+                                
+                                obj.traverse(function (child) {
+                                    if (child.isMesh) {
+                                        // 既存のマテリアルプロパティをPBRマテリアルプロパティに変更
+                                        child.material.metalness = child.material.metalness !== undefined ? child.material.metalness : 0.5;
+                                        child.material.roughness = child.material.roughness !== undefined ? child.material.roughness : 0.5;
+                                        // 必要に応じて他のPBRマテリアルプロパティも設定することができます
+                                    }
+                                });
+                                
+                                // オブジェクトをシーンに追加
+                                scene.add(obj);
+                                
+                                // BoundingBox (境界ボックス) の計算
+                                const box = new THREE.Box3().setFromObject(obj);
+                                const boxSize = box.getSize(new THREE.Vector3());
+                                const boxCenter = box.getCenter(new THREE.Vector3());
+                                // カメラの位置を設定するためのパラメータを計算
+                                const maxDim = Math.max(boxSize.x, boxSize.y, boxSize.z);
+                                let cameraZ = Math.abs(maxDim / 4 * Math.tan(camera.fov * 2)); // 適切な Z の位置に調整
+                                cameraZ *= 1.25; // オブジェクト全体が見えるように余裕を持たせる
+                                
+                                // カメラ位置の更新
+                                camera.position.z = cameraZ;
+
+                                // カメラが常にオブジェクトの中心を指すように OrbitControls を調整
+                                const lookAtTarget = new THREE.Vector3(boxCenter.x, boxCenter.y, boxCenter.z);
+                                controls.target.copy(lookAtTarget);
+
+                                // カメラコントローラーの更新
+                                controls.update();
+                            },
+                            undefined,
+                            function (error) {
+                                console.error('An error occurred.', error);
+                            }
+                        );
+                    });
+                });
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1;
+            container.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.addEventListener('change', render); // use if there is no animation loop
+            controls.minDistance = 2;
+            controls.maxDistance = 10;
+            controls.target.set(0, 0, -0.2);
+            controls.update();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            render();
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+    </script>
+
+    <div class="button-container">
+        <button class="button-previous" role="button">Previous</button>
+        <button class="button-next" role="button">Next</button> 
+    </div>
+</body>
+</html>
+
