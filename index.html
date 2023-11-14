@@ -7,6 +7,16 @@
     <link type="text/css" rel="stylesheet" href="main.css">
 </head>
 <body>
+    <!-- HTMLコンテンツ -->
+    <div class="spinner">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+
     <script type="importmap">
 			{
 				"imports": {
@@ -26,8 +36,13 @@
         let camera, scene, renderer, controls;
         let currentModelIndex = 0;
         const models = [
-        { path: 'models/louis_vuitton/', obj: 'output.obj', mtl: 'output.mtl' },
-        { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/plane/', obj: 'mesh.obj', mtl: 'mesh.mtl' },
+            { path: 'models/louis_vuitton2/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/egypt/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/louis_vuitton/', obj: 'output.obj', mtl: 'output.mtl' },
+            
+            { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/candy2/', obj: 'output.obj', mtl: 'output.mtl' },
         ];
 
         // LoadingManagerのインスタンスを作成
@@ -37,9 +52,10 @@
             render();
         };
 
+        let object3D = null;
+
         init();
         
-
         function init() {
             const container = document.createElement('div');
             document.body.appendChild(container);
@@ -71,7 +87,7 @@
 
             // 平行光源を作成
             const directionalLight = new THREE.DirectionalLight(0xffffff);
-            directionalLight.intensity = 3;
+            directionalLight.intensity = 1;
             directionalLight.position.set(1, 3, 1);
             scene.add(directionalLight);
 
@@ -96,12 +112,12 @@
 
             // ボタンのイベントリスナーを追加
             document.querySelector('.button-next').addEventListener('click', function () {
-                changeModel(1); // 次のモデルへ
+                showSpinner(); // スピナーを表示してからモデルをロード
             });
 
-            document.querySelector('.button-previous').addEventListener('click', function () {
-                changeModel(-1); // 前のモデルへ
-            });
+            //document.querySelector('.button-previous').addEventListener('click', function () {
+            //    changeModel(-1); // 前のモデルへ
+            //});
         }
 
         function loadModel(index, manager) {
@@ -113,6 +129,12 @@
 
             // モデル情報を取得
             const modelInfo = models[index];
+
+            // Clear the previous object from the scene
+            if (object3D) {
+                scene.remove(object3D);
+                object3D = null;
+            }
 
             // シーンから以前のメッシュをクリア
             for (let i = scene.children.length - 1; i >= 0; i--) {
@@ -156,8 +178,14 @@
                         }
                     });
 
+                    // Assign the loaded object to the global variable
+                    object3D = object;
+
                     // オブジェクトをシーンに追加
                     scene.add(object);
+
+                    // Start the animation loop
+                    animate();
 
                     // カメラの位置とコントロールズを更新
                     updateCameraPosition(object);
@@ -208,6 +236,32 @@
             renderer.render(scene, camera);
         }
 
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update the object's rotation if it exists
+            if (object3D) {
+                const time = performance.now();
+                object3D.rotation.y = time / 2000;
+            }
+
+            // Render the scene
+            renderer.render(scene, camera);
+
+            // Update stats if you're using them
+            if (typeof stats !== 'undefined') {
+                stats.update();
+            }
+        }
+
+        // アクティビティインジケーターの表示と非表示を制御する関数
+        function showSpinner() {
+            document.querySelector('.spinner').style.display = 'block';
+            setTimeout(() => {
+                document.querySelector('.spinner').style.display = 'none';
+                changeModel(1);
+            }, 2000); // 3秒後に非表示にしてモデルロード
+        }
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -230,29 +284,24 @@
     </script>
 
     <div class="button-container">
+        <input type="text" name="text" class="input" placeholder="Text prompt..." autocomplete="off">
+        <button class="button-next" role="button">Generate</button> 
+    </div>
+
+    <!--<div class="button-container">
         <button class="button-previous" role="button">Previous</button>
         <button class="button-next" role="button">Next</button> 
-    </div>
+    </div>-->
 
-    <div style="display: block; position: absolute; bottom: 8px; left: 8px; width: 300px; padding: 10px; background-color: #F3F7F8;">
-        <center>
-            <a href="http://www.ldraw.org"><img style="width: 145px" src="models/ldraw/ldraw_org_logo/Stamp145.png"></a>
-            <br />
-            <a href="http://www.ldraw.org/">This software uses the LDraw Parts Library</a>
-        </center>
-    </div>
-
-    <div class="container">
+    <!--<div class="container">
         <div class="box">
-            <span class="title">GLASS EFFECT</span>
+            <span class="title">a backpack with an ancient Egyptian mural texture</span>
             <div>
-                <strong>JOE WATSON SBF</strong>
-                <p>0000 000 000 0000</p>
-                <span>VALID</span> <span>01/28</span>
+                <strong>SDXL1.0+ControlNet</strong>
+                <span>Created at</span> <span>11/14</span>
             </div>
         </div>
-    </div>
-    
+    </div>-->
 </body>
 </html>
 
