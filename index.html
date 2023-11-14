@@ -30,13 +30,21 @@
         { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
         ];
 
+        // LoadingManagerのインスタンスを作成
+        const manager = new THREE.LoadingManager();
+        manager.onLoad = function () {
+            // すべてのリソースがロードされた後に呼び出される
+            render();
+        };
+
         init();
         
 
         function init() {
             const container = document.createElement('div');
             document.body.appendChild(container);
-        
+
+
             // カメラの設定
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 20);
             camera.position.set(-1.8, 0.6, 2.7);
@@ -44,7 +52,7 @@
             // シーンの設定
             scene = new THREE.Scene();
 
-            loadModel(currentModelIndex);
+            loadModel(currentModelIndex, manager);
             
             // 環境テクスチャのローダー
             new RGBELoader()
@@ -96,7 +104,7 @@
             });
         }
 
-        function loadModel(index) {
+        function loadModel(index, manager) {
             // 配列の範囲チェック
             if (index < 0 || index >= models.length) {
                 console.error('Index out of bounds');
@@ -128,21 +136,23 @@
                 }
             }
 
-            // MTLLoaderを設定
-            const mtlLoader = new MTLLoader().setPath(modelInfo.path);
+            // MTLLoaderを設定 (LoadingManagerを使用)
+            const mtlLoader = new MTLLoader(manager).setPath(modelInfo.path);
             mtlLoader.load(modelInfo.mtl, function (materials) {
                 materials.preload();
 
-                // OBJLoaderを設定
-                const objLoader = new OBJLoader().setMaterials(materials).setPath(modelInfo.path);
+               // OBJLoaderを設定（LoadingManagerを使用）
+                const objLoader = new OBJLoader(manager).setMaterials(materials).setPath(modelInfo.path);
                 objLoader.load(modelInfo.obj, function (object) {
 
                     // モデルにトラバースして、各メッシュのマテリアルを設定
                     object.traverse(function (child) {
                         if (child.isMesh) {
-                            child.material.envMap = scene.environment; // 環境マップを設定
-                            child.material.metalness = 0;
-                            child.material.roughness = 1;
+                            child.material.envMap = null;
+                            //child.material.envMap = scene.environment; // 環境マップを設定
+                            child.material.roughness = 0.5;
+                            child.material.metalness = 0.5;
+                            //child.material.envMapIntensity = 0.05;
                         }
                     });
 
@@ -167,72 +177,30 @@
             if (material.normalMap) material.normalMap.dispose();
             if (material.specularMap) material.specularMap.dispose();
             if (material.envMap) material.envMap.dispose();
-            // その他のマップも同様に解放
         }
-
-
-        /*function loadModel(index) {
-            // 配列の範囲チェック
-            if (index < 0 || index >= models.length) {
-                console.error('Index out of bounds');
-                return;
-            }
-        
-            // モデル情報を取得
-            const modelInfo = models[index];
-            console.log(modelInfo)
-        
-            // シーンから以前のモデルをクリア
-            while (scene.children.length > 0) {
-                scene.remove(scene.children[0]);
-            }
-        
-            // MTLLoaderを設定
-            const mtlLoader = new MTLLoader().setPath(modelInfo.path);
-            mtlLoader.load(modelInfo.mtl, function (materials) {
-                materials.preload();
-        
-                // OBJLoaderを設定
-                const objLoader = new OBJLoader().setMaterials(materials).setPath(modelInfo.path);
-                objLoader.load(modelInfo.obj, function (object) {
-        
-                    // モデルにトラバースして、各メッシュのマテリアルを設定
-                    object.traverse(function (child) {
-                        if (child.isMesh) {
-                            child.material.metalness = 0.5;
-                            child.material.roughness = 0.5;
-                        }
-                    });
-        
-                    // オブジェクトをシーンに追加
-                    scene.add(object);
-        
-                    // カメラの位置とコントロールズを更新
-                    updateCameraPosition(object);
-        
-                    // シーンを再レンダリング
-                    render();
-                }, onProgress, onError);
-            });
-        }*/
 
         function changeModel(direction) {
             currentModelIndex = (currentModelIndex + direction + models.length) % models.length;
-            loadModel(currentModelIndex);
+            loadModel(currentModelIndex, manager);
         }
-        
+
         function updateCameraPosition(object) {
-            // オブジェクトのバウンディングボックスを計算してカメラの位置を更新
+            // オブジェクトのバウンディングボックスを計算
             const box = new THREE.Box3().setFromObject(object);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const fov = camera.fov * (Math.PI / 180);
-            let cameraZ = Math.abs(maxDim / 4 * Math.tan(fov * 2));
-            cameraZ *= 1.25;
-            camera.position.z = cameraZ;
-        
-            controls.target.set(center.x, center.y, center.z);
+            
+            // オブジェクトのサイズに基づいてカメラの位置を決定
+            const cameraOffset = size.y * 0.1; // オブジェクトの高さの0.1倍ををカメラのオフセットとする
+            const cameraZ = center.z + size.z * 0.1; // オブジェクトの奥行きの0.1倍を前方に配置
+            const cameraY = center.y + cameraOffset; // オブジェクトの中心よりも上にカメラを配置
+            const cameraX = center.x; // オブジェクトの中心と同じX座標に設定
+
+            camera.position.set(cameraX, cameraY, cameraZ);
+            
+            // カメラを少し下向きにしてオブジェクトの上部を見下ろすようにする
+            const lookAtPosition = new THREE.Vector3(center.x, center.y + cameraOffset / 2, center.z);
+            camera.lookAt(lookAtPosition);
             controls.update();
         }
 
@@ -265,6 +233,26 @@
         <button class="button-previous" role="button">Previous</button>
         <button class="button-next" role="button">Next</button> 
     </div>
+
+    <div style="display: block; position: absolute; bottom: 8px; left: 8px; width: 300px; padding: 10px; background-color: #F3F7F8;">
+        <center>
+            <a href="http://www.ldraw.org"><img style="width: 145px" src="models/ldraw/ldraw_org_logo/Stamp145.png"></a>
+            <br />
+            <a href="http://www.ldraw.org/">This software uses the LDraw Parts Library</a>
+        </center>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <span class="title">GLASS EFFECT</span>
+            <div>
+                <strong>JOE WATSON SBF</strong>
+                <p>0000 000 000 0000</p>
+                <span>VALID</span> <span>01/28</span>
+            </div>
+        </div>
+    </div>
+    
 </body>
 </html>
 
