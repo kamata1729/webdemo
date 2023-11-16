@@ -37,11 +37,13 @@
         let currentModelIndex = 0;
         const models = [
             { path: 'models/plane/', obj: 'mesh.obj', mtl: 'mesh.mtl' },
-            { path: 'models/louis_vuitton2/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
             { path: 'models/egypt/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/louis_vuitton2/', obj: 'output.obj', mtl: 'output.mtl' },
+            
             { path: 'models/louis_vuitton/', obj: 'output.obj', mtl: 'output.mtl' },
             
-            { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
+            
             { path: 'models/candy2/', obj: 'output.obj', mtl: 'output.mtl' },
         ];
 
@@ -114,10 +116,6 @@
             document.querySelector('.button-next').addEventListener('click', function () {
                 showSpinner(); // スピナーを表示してからモデルをロード
             });
-
-            //document.querySelector('.button-previous').addEventListener('click', function () {
-            //    changeModel(-1); // 前のモデルへ
-            //});
         }
 
         function loadModel(index, manager) {
@@ -287,21 +285,6 @@
         <input type="text" name="text" class="input" placeholder="Text prompt..." autocomplete="off">
         <button class="button-next" role="button">Generate</button> 
     </div>
-
-    <!--<div class="button-container">
-        <button class="button-previous" role="button">Previous</button>
-        <button class="button-next" role="button">Next</button> 
-    </div>-->
-
-    <!--<div class="container">
-        <div class="box">
-            <span class="title">a backpack with an ancient Egyptian mural texture</span>
-            <div>
-                <strong>SDXL1.0+ControlNet</strong>
-                <span>Created at</span> <span>11/14</span>
-            </div>
-        </div>
-    </div>-->
 </body>
 </html>
 
