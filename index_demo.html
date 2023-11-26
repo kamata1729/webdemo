@@ -17,12 +17,6 @@
         <div></div>
     </div>
 
-    <div id="dropzone">
-        <img src="assets/obj-svgrepo-com.svg" alt="OBJ File Icon" />
-        .objファイルをここにドロップ
-    </div>
-
-
     <script type="importmap">
 			{
 				"imports": {
@@ -44,24 +38,14 @@
         const models = [
             { path: 'models/plane/', obj: 'mesh.obj', mtl: 'mesh.mtl' },
             { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/egypt/', obj: 'output.obj', mtl: 'output.mtl' },
+            { path: 'models/louis_vuitton2/', obj: 'output.obj', mtl: 'output.mtl' },
+            
+            { path: 'models/louis_vuitton/', obj: 'output.obj', mtl: 'output.mtl' },
+            
+            
+            { path: 'models/candy2/', obj: 'output.obj', mtl: 'output.mtl' },
         ];
-
-        const dropzone = document.getElementById('dropzone');
-        dropzone.addEventListener('dragover', (event) => {
-            event.stopPropagation();
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'copy';
-        });
-
-        dropzone.addEventListener('drop', (event) => {
-            event.stopPropagation();
-            event.preventDefault();
-            const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                loadDroppedModel(files[0]);
-            }
-        });
-
 
         // LoadingManagerのインスタンスを作成
         const manager = new THREE.LoadingManager();
@@ -194,57 +178,20 @@
 
                     // Assign the loaded object to the global variable
                     object3D = object;
+
                     // オブジェクトをシーンに追加
                     scene.add(object);
+
                     // Start the animation loop
                     animate();
+
                     // カメラの位置とコントロールズを更新
                     updateCameraPosition(object);
+
                     // シーンを再レンダリング
                     render();
                 }, onProgress, onError);
             });
-        }
-
-        function loadDroppedModel(file) {
-            // ファイル名から拡張子を取得
-            const extension = file.name.split('.').pop().toLowerCase();
-
-            // 拡張子が.objであるかチェック
-            if (extension !== 'obj') {
-                alert('エラー: .objファイルのみサポートされています。');
-                return;
-            }
-
-            // FileReaderを使用してファイルの内容を読み込む
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const contents = event.target.result;
-                const objLoader = new OBJLoader();
-                const object = objLoader.parse(contents);
-
-                // バウンディングボックスを計算
-                const bbox = new THREE.Box3().setFromObject(object);
-                const size = bbox.getSize(new THREE.Vector3());
-                const maxSize = Math.max(size.x, size.y, size.z);
-
-                // 目標サイズ（この場合は球の直径4）との比較
-                const desiredSize = 3; // 半径2の球の直径
-                const scale = desiredSize / maxSize;
-                
-                // スケールを適用
-                object.scale.set(scale, scale, scale);
-
-                // 既存のモデルをクリア
-                if (object3D) {
-                    scene.remove(object3D);
-                    object3D = null;
-                }
-                object3D = object;
-                scene.add(object3D);
-                render();
-            };
-            reader.readAsText(file);
         }
 
         function cleanMaterial(material) {

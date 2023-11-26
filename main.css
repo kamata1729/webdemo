@@ -363,3 +363,30 @@ transform: translateZ(35.2px);
 	transform: rotate(45deg) rotateX(-385deg) rotateY(385deg);
 }
 }
+
+#dropzone {
+    z-index: 1500;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70%;   /* 幅を画面の80%に設定 */
+    height: 50%;  /* 高さを画面の80%に設定 */
+    border: 2px dashed #ccc;
+    padding: 20px;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.5);
+	font-size: 4em; /* テキストのサイズを大きくする */
+    color: #333; /* テキストの色を設定する */
+    line-height: 1.5; /* テキストの行の高さを調整する */
+    display: flex; /* Flexboxレイアウトを使う */
+    justify-content: center; /* 水平方向の中央寄せ */
+    align-items: center; /* 垂直方向の中央寄せ */
+}
+
+#dropzone img {
+    max-width: 10%; /* 画像の最大幅を設定 */
+    margin-bottom: 20px; /* 画像とテキストの間に余白を設定 */
+}
+
+
