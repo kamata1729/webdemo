@@ -7,6 +7,9 @@
     <link type="text/css" rel="stylesheet" href="main.css">
 </head>
 <body>
+
+    <div class="main-content">
+
     <div class="spinner">
         <div></div>
         <div></div>
@@ -19,7 +22,6 @@
     <div id="dropzone">
         <img src="assets/obj-svgrepo-com.svg" alt="OBJ File Icon" />
         .objファイルをここにドロップ
-        <input type="file" id="fileInput" style="display: none;" accept=".obj">
     </div>
 
     <script type="importmap">
@@ -31,7 +33,6 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/tweakpane@1.0.4/dist/tweakpane.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
@@ -44,6 +45,10 @@
 
         let camera, scene, renderer, controls;
         let currentModelIndex = 0;
+        const models = [
+            { path: 'models/plane/', obj: 'mesh.obj', mtl: 'mesh.mtl' },
+            { path: 'models/candy/', obj: 'output.obj', mtl: 'output.mtl' },
+        ];
 
         const dropzone = document.getElementById('dropzone');
         dropzone.addEventListener('dragover', (event) => {
@@ -58,20 +63,6 @@
             const files = event.dataTransfer.files;
             if (files.length > 0) {
                 loadDroppedModel(files[0]);
-                dropzone.style.display = 'none';
-            }
-        });
-
-        const fileInput = document.getElementById('fileInput');
-
-        dropzone.addEventListener('click', () => {
-            fileInput.click(); // ファイルダイアログを開く
-        });
-
-        fileInput.addEventListener('change', (event) => {
-            if (event.target.files.length > 0) {
-                loadDroppedModel(event.target.files[0]);
-                dropzone.style.display = 'none'; // オプション: ファイル選択後にdropzoneを非表示にする
             }
         });
 
@@ -117,12 +108,15 @@
             const container = document.createElement('div');
             document.body.appendChild(container);
 
+
             // カメラの設定
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 20);
             camera.position.set(-1.8, 0.6, 2.7);
         
             // シーンの設定
             scene = new THREE.Scene();
+
+            loadModel(currentModelIndex, manager);
             
             // 環境テクスチャのローダー
             new RGBELoader()
@@ -163,68 +157,82 @@
 
             // リサイズイベントのハンドラーを設定
             window.addEventListener('resize', onWindowResize);
-                
-            document.querySelector('.button-generate').addEventListener('click', async function () {
-                showSpinner(); 
-                const APIID = "9wl01j4ys9";
-                const REGION = "ap-northeast-1";
-                const SAGEMAKER_ENDPOINT_TEXT2TEX = "dev-ane1-cmg-sagemaker-text2tex";
 
-                // Tweakpaneからのパラメータ取得
-                const requestParams = {
-                    inferenceSteps: params.inferenceSteps,
-                    updateStrength: params.updateStrength,
-                    uvSize: params.uvSize,
-                    imageSize: params.imageSize,
-                    seed: params.seed,
-                    // 他の必要なパラメータをここに追加
-                };
-                const requestParams2 = {
-                    prompt: "Louis Vuitton backpacks.",
-                    add_view_to_prompt: true,
-                    inference_steps: 25,
-                    new_strength: 1,
-                    update_strength: 0.5,
-                    view_threshold: 0.1,
-                    blend: 0,
-                    dist: 1,
-                    num_viewpoints: 36,
-                    viewpoint_mode: "predefined",
-                    use_principle: true,
-                    update_steps: 0,
-                    update_mode: "heuristic",
-                    seed: 42,
-                    post_process: true,
-                    device: "2080",
-                    uv_size: 4096,
-                    image_size: 1024,
-                    use_objaverse: true
-                };  
-                console.log(requestParams2)
+            // ボタンのイベントリスナーを追加
+            document.querySelector('.button-generate').addEventListener('click', function () {
+                showSpinner(); // スピナーを表示してからモデルをロード
+            });
+        }
 
-                // フォームデータの作成
-                const formData = new FormData();
-                const fileInput = document.getElementById('fileInput');
-                if (fileInput.files.length > 0) {
-                    formData.append('file', fileInput.files[0]);
+        function loadModel(index, manager) {
+            // 配列の範囲チェック
+            if (index < 0 || index >= models.length) {
+                console.error('Index out of bounds');
+                return;
+            }
+
+            // モデル情報を取得
+            const modelInfo = models[index];
+
+            // Clear the previous object from the scene
+            if (object3D) {
+                scene.remove(object3D);
+                object3D = null;
+            }
+
+            // シーンから以前のメッシュをクリア
+            for (let i = scene.children.length - 1; i >= 0; i--) {
+                const obj = scene.children[i];
+                if (obj.isMesh) {
+                    // メッシュのマテリアルとジオメトリの解放
+                    if (obj.geometry) {
+                        obj.geometry.dispose();
+                    }
+                    if (obj.material) {
+                        if (obj.material.isMaterial) {
+                            cleanMaterial(obj.material);
+                        } else {
+                            // マテリアルが配列の場合
+                            for (const material of obj.material) {
+                                cleanMaterial(material);
+                            }
+                        }
+                    }
+                    scene.remove(obj);
                 }
+            }
 
-                // パラメータをJSON形式で追加
-                formData.append('params', JSON.stringify(requestParams2));
-                console.log(formData);
+            // MTLLoaderを設定 (LoadingManagerを使用)
+            const mtlLoader = new MTLLoader(manager).setPath(modelInfo.path);
+            mtlLoader.load(modelInfo.mtl, function (materials) {
+                materials.preload();
 
-                try {
-                    
-                    const response = await axios.post(`https://${APIID}.execute-api.${REGION}.amazonaws.com/dev/${SAGEMAKER_ENDPOINT_TEXT2TEX}`, formData, {
-                        headers: {
-                            'Content-Type': 'multipart/form-data'
+               // OBJLoaderを設定（LoadingManagerを使用）
+                const objLoader = new OBJLoader(manager).setMaterials(materials).setPath(modelInfo.path);
+                objLoader.load(modelInfo.obj, function (object) {
+
+                    // モデルにトラバースして、各メッシュのマテリアルを設定
+                    object.traverse(function (child) {
+                        if (child.isMesh) {
+                            child.material.envMap = null;
+                            //child.material.envMap = scene.environment; // 環境マップを設定
+                            child.material.roughness = 0.5;
+                            child.material.metalness = 0.5;
+                            //child.material.envMapIntensity = 0.05;
                         }
                     });
 
-                    console.log('Response:', response);
-                } catch (error) {
-                    console.error('Error:', error);
-                }
+                    // Assign the loaded object to the global variable
+                    object3D = object;
+                    // オブジェクトをシーンに追加
+                    scene.add(object);
+                    // Start the animation loop
+                    animate();
+                    // カメラの位置とコントロールズを更新
+                    updateCameraPosition(object);
+                    // シーンを再レンダリング
+                    render();
+                }, onProgress, onError);
             });
         }
 
@@ -251,7 +259,7 @@
                 const maxSize = Math.max(size.x, size.y, size.z);
 
                 // 目標サイズ（この場合は球の直径4）との比較
-                const desiredSize = 2; // 半径2の球の直径
+                const desiredSize = 3; // 半径2の球の直径
                 const scale = desiredSize / maxSize;
                 
                 // スケールを適用
@@ -278,6 +286,11 @@
             if (material.normalMap) material.normalMap.dispose();
             if (material.specularMap) material.specularMap.dispose();
             if (material.envMap) material.envMap.dispose();
+        }
+
+        function changeModel(direction) {
+            currentModelIndex = (currentModelIndex + direction + models.length) % models.length;
+            loadModel(currentModelIndex, manager);
         }
 
         function updateCameraPosition(object) {
@@ -327,7 +340,8 @@
             document.querySelector('.spinner').style.display = 'block';
             setTimeout(() => {
                 document.querySelector('.spinner').style.display = 'none';
-            }, 2000); // 2秒後に非表示
+                changeModel(1);
+            }, 2000); // 3秒後に非表示にしてモデルロード
         }
 
         function onWindowResize() {
@@ -353,6 +367,8 @@
     <div class="button-container">
         <input type="text" name="text" class="input" placeholder="Text prompt..." autocomplete="off">
         <button class="button-generate" role="button">Generate</button> 
+    </div>
+
     </div>
 </body>
 </html>

@@ -136,7 +136,7 @@ margin: 0 5px;
   }
 }
 
-.button-next {
+.button-generate {
 	margin: 0 5px;
 	  background-color: #fff;
 	  border: 0 solid #e2e8f0;
@@ -160,13 +160,13 @@ margin: 0 5px;
 	  touch-action: manipulation;
 	}
 	
-.button-next:hover {
+.button-generate:hover {
 	background-color: #1e293b;
 	color: #fff;
 }
 
 @media (min-width: 768px) {
-	.button-next {
+	.button-generate {
 	font-size: 1.125rem;
 	padding: 1rem 2rem;
 	}
@@ -387,12 +387,6 @@ transform: translateZ(35.2px);
 #dropzone img {
     max-width: 10%; /* 画像の最大幅を設定 */
     margin-bottom: 20px; /* 画像とテキストの間に余白を設定 */
-}
-
-.custom-pane {
-    position: absolute;
-    top: 10px;   /* 上からの距離 */
-    right: 10px; /* 右からの距離 */
 }
 
 .tp-rotv {
