@@ -389,4 +389,21 @@ transform: translateZ(35.2px);
     margin-bottom: 20px; /* 画像とテキストの間に余白を設定 */
 }
 
+.custom-pane {
+    position: absolute;
+    top: 10px;   /* 上からの距離 */
+    right: 10px; /* 右からの距離 */
+}
 
+.tp-rotv {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 25%; /* パネルの幅を調整 */
+    font-size: 2em; /* フォントサイズを調整 */
+}
+
+/* タイトルやラベルのフォントサイズも調整する場合 */
+.tp-rotv .tp-lblv, .tp-rotv .tp-ttlv {
+    font-size: 16px;
+}

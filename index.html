@@ -7,7 +7,9 @@
     <link type="text/css" rel="stylesheet" href="main.css">
 </head>
 <body>
-    <!-- HTMLコンテンツ -->
+
+    <div class="main-content">
+
     <div class="spinner">
         <div></div>
         <div></div>
@@ -22,7 +24,6 @@
         .objファイルをここにドロップ
     </div>
 
-
     <script type="importmap">
 			{
 				"imports": {
@@ -31,6 +32,8 @@
 			}
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/tweakpane@1.0.4/dist/tweakpane.min.js"></script>
+
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
         import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
@@ -38,6 +41,7 @@
         import { OBJLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/OBJLoader.js';
         import { RGBELoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/RGBELoader.js';
         import { MTLLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/MTLLoader.js';
+        import { Pane } from 'https://cdn.skypack.dev/tweakpane';
 
         let camera, scene, renderer, controls;
         let currentModelIndex = 0;
@@ -62,6 +66,32 @@
             }
         });
 
+        const pane = new Tweakpane({
+            title: 'Parameters',
+            expanded: true,
+            container: document.body,
+        });
+
+        const params = {
+            inferenceSteps: 25,
+            updateStrength: 0.5,
+            uvSize: 4096,
+            imageSize: 1024,
+            seed: 42,
+        };
+
+        // パラメータをパネルに追加
+        pane.addInput(params, 'inferenceSteps', { min: 5, max: 50, step: 1 });
+        pane.addInput(params, 'updateStrength', { min: 0.05, max: 1.0, step: 0.05 });
+        pane.addInput(params, 'uvSize', { min: 1024, max: 4096, step: 1024 });
+        pane.addInput(params, 'imageSize', { min: 512, max: 1024, step: 256 });
+        pane.addInput(params, 'seed', { step: 1 });
+
+        // パラメータの変更を監視
+        pane.on('change', (value) => {
+            // ここにパラメータ変更時の処理を記述
+            console.log('Parameter changed:', value);
+        });
 
         // LoadingManagerのインスタンスを作成
         const manager = new THREE.LoadingManager();
@@ -337,6 +367,8 @@
     <div class="button-container">
         <input type="text" name="text" class="input" placeholder="Text prompt..." autocomplete="off">
         <button class="button-next" role="button">Generate</button> 
+    </div>
+
     </div>
 </body>
 </html>
