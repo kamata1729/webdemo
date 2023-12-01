@@ -45,6 +45,10 @@
         let camera, scene, renderer, controls;
         let currentModelIndex = 0;
 
+        const APIID = "9wl01j4ys9";
+        const REGION = "ap-northeast-1";
+        const SAGEMAKER_ENDPOINT_TEXT2TEX = "dev-ane1-cmg-sagemaker-text2tex";
+
         const dropzone = document.getElementById('dropzone');
         dropzone.addEventListener('dragover', (event) => {
             event.stopPropagation();
@@ -63,15 +67,13 @@
         });
 
         const fileInput = document.getElementById('fileInput');
-
         dropzone.addEventListener('click', () => {
             fileInput.click(); // ファイルダイアログを開く
         });
-
         fileInput.addEventListener('change', (event) => {
             if (event.target.files.length > 0) {
                 loadDroppedModel(event.target.files[0]);
-                dropzone.style.display = 'none'; // オプション: ファイル選択後にdropzoneを非表示にする
+                dropzone.style.display = 'none'; 
             }
         });
 
@@ -166,67 +168,132 @@
                 
             document.querySelector('.button-generate').addEventListener('click', async function () {
                 showSpinner(); 
-                const APIID = "9wl01j4ys9";
-                const REGION = "ap-northeast-1";
-                const SAGEMAKER_ENDPOINT_TEXT2TEX = "dev-ane1-cmg-sagemaker-text2tex";
 
-                // Tweakpaneからのパラメータ取得
-                const requestParams = {
-                    inferenceSteps: params.inferenceSteps,
-                    updateStrength: params.updateStrength,
-                    uvSize: params.uvSize,
-                    imageSize: params.imageSize,
-                    seed: params.seed,
-                    // 他の必要なパラメータをここに追加
-                };
-                const requestParams2 = {
-                    prompt: "Louis Vuitton backpacks.",
-                    add_view_to_prompt: true,
-                    inference_steps: 25,
-                    new_strength: 1,
-                    update_strength: 0.5,
-                    view_threshold: 0.1,
-                    blend: 0,
-                    dist: 1,
-                    num_viewpoints: 36,
-                    viewpoint_mode: "predefined",
-                    use_principle: true,
-                    update_steps: 0,
-                    update_mode: "heuristic",
-                    seed: 42,
-                    post_process: true,
-                    device: "2080",
-                    uv_size: 4096,
-                    image_size: 1024,
-                    use_objaverse: true
-                };  
-                console.log(requestParams2)
-
-                // フォームデータの作成
-                const formData = new FormData();
-                const fileInput = document.getElementById('fileInput');
-                if (fileInput.files.length > 0) {
-                    formData.append('file', fileInput.files[0]);
-                }
-
-                // パラメータをJSON形式で追加
-                formData.append('params', JSON.stringify(requestParams2));
-                console.log(formData);
-
-                try {
-                    
-                    const response = await axios.post(`https://${APIID}.execute-api.${REGION}.amazonaws.com/dev/${SAGEMAKER_ENDPOINT_TEXT2TEX}`, formData, {
-                        headers: {
-                            'Content-Type': 'multipart/form-data'
-                        }
-                    });
-
-                    console.log('Response:', response);
-                } catch (error) {
-                    console.error('Error:', error);
-                }
+                startGeneration();
             });
         }
+
+        // ジョブを作成するための関数postJob
+        async function postJob(inputfileNames) {
+            const postBody = { inputfiles: inputfileNames };
+            return await axios.post(`https://${APIID}.execute-api.${REGION}.amazonaws.com/dev/job`, postBody);
+        }
+
+        // ジョブを開始するための関数
+        async function putJobStart(uuid, inputParamsJson) {
+            const putBody = {
+                modelEndPoint: SAGEMAKER_ENDPOINT_TEXT2TEX,
+                inputParams: inputParamsJson
+            };
+            return await axios.put(`https://${APIID}.execute-api.${REGION}.amazonaws.com/dev/job/${uuid}/start`, putBody);
+        }
+
+        // ファイルアップロードのための関数
+        async function uploadFile(uploadUrl, localFile) {
+            const uint8Array = await readFileAsUint8Array(localFile);
+            return await axios.put(uploadUrl, new Blob([uint8Array]));
+        }
+
+        // ファイルをUint8Arrayとして読み込むための関数
+        function readFileAsUint8Array(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const uint8Array = new Uint8Array(reader.result);
+                    resolve(uint8Array);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ジョブのステータスを取得する関数
+        async function getJobStatus(uuid) {
+            const response = await axios.get(`https://${APIID}.execute-api.${REGION}.amazonaws.com/dev/job/${uuid}`);
+
+            if (response.status !== 200) {
+                console.error("getJobStatus:", response);
+                throw new Error("getJobStatus error");
+            }
+
+            return response.data;
+        }
+
+
+        async function startGeneration() {
+            // fileInputがHTMLのinput要素で、typeが'file'であると仮定
+            const fileInput = document.getElementById('fileInput');
+        
+            if (!fileInput.files.length) {
+                console.error('ファイルが選択されていません。');
+                return;
+            }
+        
+            const file = fileInput.files[0]; // 最初のファイルを選択
+            const fileNames = [file.name];   // ファイル名のリスト
+        
+            // APIリクエスト用のパラメータ
+            const requestParams = {
+                prompt: "Louis Vuitton backpacks.",
+                add_view_to_prompt: true,
+                inference_steps: params.inferenceSteps,
+                new_strength: 1,
+                update_strength: params.updateStrength,
+                view_threshold: 0.1,
+                blend: 0,
+                dist: 1,
+                num_viewpoints: 36,
+                viewpoint_mode: "predefined",
+                use_principle: true,
+                update_steps: 0,
+                update_mode: "heuristic",
+                seed: params.seed,
+                post_process: true,
+                device: "2080",
+                uv_size: params.uvSize,
+                image_size: params.imageSize,
+                use_objaverse: true
+            };
+            const inputParamsJson = JSON.stringify(requestParams);
+        
+            // ジョブを作成
+            const postJobResult = await postJob(fileNames);
+            const uuid = postJobResult.data.uuid;
+        
+            // ファイルをアップロード
+            const uploadUrl = postJobResult.data.inputfiles.find(url => url.endsWith(file.name));
+            if (uploadUrl) {
+                await uploadFile(uploadUrl, file);
+            } else {
+                console.error('アップロードURLが見つかりません。');
+                return;
+            }
+            console.log('uploaded to ',uploadUrl)
+        
+            // ジョブを開始
+            const putJobStartResult = await putJobStart(uuid, inputParamsJson);
+            console.log(putJobStartResult)
+
+            // ジョブのステータスを定期的に確認
+            let jobCompleted = false;
+            while (!jobCompleted) {
+                try {
+                    const statusResult = await getJobStatus(uuid);
+                    if (statusResult.status === 'ready') {
+                        jobCompleted = true;
+                        console.log('ジョブ完了:', statusResult.outputfiles);
+                        // ここで出力ファイルを処理する
+                    } else {
+                        console.log('ジョブ実行中...');
+                        await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機
+                    }
+                } catch (error) {
+                    console.error('ジョブステータス確認エラー:', error);
+                    break;
+                }
+            }
+        }
+        
+
 
         function loadDroppedModel(file) {
             // ファイル名から拡張子を取得
@@ -348,6 +415,7 @@
             console.error(err);
         }
 
+        
     </script>
 
     <div class="button-container">
